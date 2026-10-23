@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('SolarCast 대시보드')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('dashboard')}"></header>
+<main>
+  <div class="toolbar">
+    <div class="seg" id="target">
+      <button data-t="solar" class="on">태양광 발전량</button>
+      <button data-t="demand">전국 전력수요</button>
+    </div>
+    <button id="prev" aria-label="이전 날">◀</button>
+    <input type="date" id="date">
+    <button id="next" aria-label="다음 날">▶</button>
+    <button id="latest">최근 재생일</button>
+    <span class="muted" id="replay"></span>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi"><h2 id="k1t">일 오차 (NMAE)</h2><div class="value" id="k1">-</div><div class="sub" id="k1s"></div></div>
+    <div class="card kpi"><h2>7일 평균 오차</h2><div class="value" id="k2">-</div><div class="sub" id="k2s"></div></div>
+    <div class="card kpi"><h2>예측 총량 / 실측 총량</h2><div class="value" id="k3">-</div><div class="sub" id="k3s"></div></div>
+    <div class="card kpi"><h2>서빙 모델</h2><div class="value" id="k4">-</div><div class="sub" id="k4s"></div></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2 id="c1t">시간별 예측(P50)과 예측 구간(P10~P90), 실측</h2>
+      <div class="chart"><canvas id="day"></canvas></div>
+      <div class="weather" id="weather"></div>
+    </div>
+    <div class="card alerts">
+      <h2>최근 경고</h2>
+      <ul id="alerts"></ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h2>일별 오차 추이 <span class="muted">— 점선: 경고 기준(검증 성능 × 1.5)</span></h2>
+    <div class="chart small"><canvas id="trend"></canvas></div>
+  </div>
+</main>
+<script th:src="@{/dashboard.js}"></script>
+</body>
+</html>

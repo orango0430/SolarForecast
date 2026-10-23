@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+app:
+  model-api:
+    url: http://localhost:65530
+    connect-timeout: 200ms
+    read-timeout: 500ms
+    retries: 1
+  admin:
+    username: admin
+    password: admin
+  seed:
+    dir: ./nowhere
+    enabled: false
+  kma:
+    service-key:
+  slack:
+    webhook-url:
+  replay:
+    auto-interval-ms: 3600000
+  live:
+    enabled: false
+  monitor:
+    ratio-threshold: 1.5
+    consecutive-days: 3
+    window-days: 7

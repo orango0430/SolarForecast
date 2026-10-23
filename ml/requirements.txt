@@ -1,0 +1,16 @@
+pandas==3.1.0
+numpy==2.5.4
+scikit-learn==1.9.1
+lightgbm==4.7.0
+pvlib==0.16.1
+holidays==0.107
+fastapi==0.161.1
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+mlflow==3.17.2
+psycopg2-binary
+prometheus-client
+requests==2.34.2
+joblib==1.6.0
+pytest==9.1.1
+httpx==0.28.1

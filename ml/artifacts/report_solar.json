@@ -1,0 +1,62 @@
+{
+  "best": "lgbm_csi_obs",
+  "results": {
+    "baseline": {
+      "nmae": 12.075978582748473,
+      "nmae_all_hours": 4.7221253424204335,
+      "nmae_low_util": 1.685291968960359,
+      "nmae_clear": 11.746296828309305,
+      "nmae_partly": 12.755379411764704,
+      "nmae_overcast": 19.491384126984126
+    },
+    "ridge": {
+      "nmae": 11.943242899513283,
+      "nmae_all_hours": 4.306122299920312,
+      "nmae_low_util": 1.1523113716852555,
+      "nmae_clear": 12.27104279017968,
+      "nmae_partly": 9.5419419496819,
+      "nmae_overcast": 11.089772020365931
+    },
+    "lgbm_raw_obs": {
+      "nmae": 8.672486312620805,
+      "nmae_all_hours": 3.245714199368984,
+      "nmae_low_util": 1.0046846159515104,
+      "nmae_clear": 8.33508603672993,
+      "nmae_partly": 10.766948960574128,
+      "nmae_overcast": 10.975802440381967,
+      "cv_nmae": 8.892886429460086,
+      "coverage_p10_p90": 87.4015748031496,
+      "nmae_obs_inputs": 8.29228583282073
+    },
+    "lgbm_csi_obs": {
+      "nmae": 8.556521151631735,
+      "nmae_all_hours": 3.2050970331814947,
+      "nmae_low_util": 0.9951830156801201,
+      "nmae_clear": 8.18818473796219,
+      "nmae_partly": 11.006282870173273,
+      "nmae_overcast": 10.45427385102483,
+      "cv_nmae": 8.813471622015921,
+      "coverage_p10_p90": 87.4015748031496,
+      "nmae_obs_inputs": 8.347848968219857
+    },
+    "lgbm_csi_fcst": {
+      "nmae": 8.665665178168343,
+      "nmae_all_hours": 3.2656307938511007,
+      "nmae_low_util": 1.0356427725787323,
+      "nmae_clear": 8.290559627526651,
+      "nmae_partly": 11.347635541616047,
+      "nmae_overcast": 9.891139644017167,
+      "cv_nmae": 9.693454723905777,
+      "coverage_p10_p90": 88.42056507642427,
+      "nmae_obs_inputs": 9.212856273755254
+    },
+    "upper_bound_with_icsr": {
+      "nmae": 7.006781384173557,
+      "nmae_all_hours": 2.6065088796218907,
+      "nmae_low_util": 0.789380639849573,
+      "nmae_clear": 5.44063911125939,
+      "nmae_partly": 9.073836569034162,
+      "nmae_overcast": 9.195653610602596
+    }
+  }
+}

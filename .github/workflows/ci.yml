@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  ml:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ml } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13", cache: pip, cache-dependency-path: ml/requirements.txt }
+      - run: pip install -r requirements.txt
+      # 피처 함수, 누수 점검(예측 시점 이후 데이터 혼입), 모델 서버 API
+      - run: python -m pytest -q tests
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17", cache: gradle }
+      - run: chmod +x gradlew && ./gradlew --no-daemon test
+
+  images:
+    runs-on: ubuntu-latest
+    needs: [ml, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build

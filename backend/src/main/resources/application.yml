@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: solarcast
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/solarcast?reWriteBatchedInserts=true}
+    username: ${DB_USER:solarcast}
+    password: ${DB_PASSWORD:solarcast}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate.jdbc.batch_size: 500
+      hibernate.jdbc.time_zone: Asia/Seoul
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  timezone: Asia/Seoul
+  model-api:
+    url: ${MODEL_API_URL:http://localhost:8000}
+    connect-timeout: 2s
+    read-timeout: 10s
+    retries: 3
+  admin:
+    username: ${ADMIN_USER:admin}
+    password: ${ADMIN_PASSWORD:admin}
+  seed:
+    # 비어 있는 DB에 data/processed CSV를 넣는다 (리플레이용 아카이브)
+    dir: ${SEED_DIR:../data/processed}
+    enabled: ${SEED_ENABLED:true}
+  kma:
+    # 공공데이터포털 서비스 키 (없으면 라이브 수집을 건너뛴다)
+    service-key: ${KMA_SERVICE_KEY:}
+  slack:
+    webhook-url: ${SLACK_WEBHOOK_URL:}
+  replay:
+    # 자동 진행 시 하루를 넘기는 간격
+    auto-interval-ms: ${REPLAY_INTERVAL_MS:3000}
+  live:
+    enabled: ${LIVE_ENABLED:false}
+  monitor:
+    ratio-threshold: 1.5
+    consecutive-days: 3
+    window-days: 7

@@ -1,0 +1,87 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e3e6eb;
+  --text: #1c2330;
+  --muted: #667085;
+  --accent: #e8890c;
+  --accent-soft: rgba(232, 137, 12, .16);
+  --demand: #2f6fde;
+  --demand-soft: rgba(47, 111, 222, .14);
+  --actual: #1c2330;
+  --good: #1f9d55;
+  --bad: #d92d20;
+  --warn: #b54708;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b;
+    --surface: #1a1f27;
+    --border: #2a313c;
+    --text: #e6e9ee;
+    --muted: #98a2b3;
+    --accent: #f5a524;
+    --accent-soft: rgba(245, 165, 36, .18);
+    --demand: #5b93f5;
+    --demand-soft: rgba(91, 147, 245, .18);
+    --actual: #e6e9ee;
+    --good: #3ccb7f;
+    --bad: #f97066;
+    --warn: #fdb022;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+header {
+  display: flex; align-items: center; gap: 24px;
+  padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+header h1 { font-size: 16px; margin: 0; }
+header nav a { color: var(--muted); text-decoration: none; margin-right: 16px; }
+header nav a.active { color: var(--text); font-weight: 600; }
+main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button.on { background: var(--text); color: var(--bg); }
+button, input, select {
+  font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.grid { display: grid; gap: 12px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.card h2 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.kpi .value { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi .sub { color: var(--muted); font-size: 12px; }
+.good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+.chart { position: relative; height: 320px; }
+.chart.small { height: 220px; }
+.two { grid-template-columns: 2fr 1fr; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+.weather { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 8px; text-align: center; font-size: 11px; color: var(--muted); }
+.weather .sky { font-size: 15px; }
+@media (max-width: 640px) { .weather { grid-template-columns: repeat(12, 1fr); } }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td.num { font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; border: 1px solid var(--border); }
+.tag.champion { background: var(--accent-soft); border-color: var(--accent); }
+.alerts { max-height: 360px; overflow: auto; }
+.alerts li { list-style: none; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.alerts ul { margin: 0; padding: 0; }
+.alerts .t { font-size: 11px; font-weight: 600; margin-right: 6px; }
+.muted { color: var(--muted); }
+pre.log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; max-height: 360px; overflow: auto; white-space: pre-wrap; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.scroll-x { overflow-x: auto; }

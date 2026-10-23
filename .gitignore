@@ -1,0 +1,18 @@
+# python
+ml/.venv/
+__pycache__/
+.pytest_cache/
+ml/mlflow.db
+ml/mlruns/
+ml/artifacts/*.joblib
+mlruns/
+
+# data: raw(공공데이터 CSV, Open-Meteo 캐시)는 커밋, processed는 raw에서 다시 만든다
+data/processed/
+
+# java
+backend/build/
+backend/.gradle/
+.idea/
+*.iml
+.env

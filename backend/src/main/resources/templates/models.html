@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('SolarCast 모델')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('models')}"></header>
+<main>
+  <div class="card" style="margin-bottom:12px">
+    <h2>교체 규칙</h2>
+    <div>challenger가 최근 30일 리플레이 구간에서 champion보다 주 지표(NMAE·MAPE)가 낮고, 태양광은 하늘상태별(맑음·구름많음·흐림) 오차도 나빠지지 않을 때만 승격한다. 롤백은 alias를 이전 버전으로 되돌린다.</div>
+  </div>
+  <div class="card scroll-x" style="margin-bottom:12px"><h2>태양광 발전량 모델</h2><table id="solar"></table></div>
+  <div class="card scroll-x" style="margin-bottom:12px"><h2>전력수요 모델</h2><table id="demand"></table></div>
+  <div class="card"><h2>교체 이력</h2><table id="history"></table></div>
+</main>
+<script>
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const dt = (s) => (s ? s.replace('T', ' ').slice(0, 16) : '-');
+  fetch('/api/models').then((r) => r.json()).then((all) => {
+    for (const t of ['solar', 'demand']) {
+      const rows = all[t] || [];
+      document.getElementById(t).innerHTML =
+        '<tr><th>버전</th><th>상태</th><th>검증 성능</th><th>지표</th><th>등록</th><th>승격</th></tr>' +
+        (rows.map((m) => `<tr><td>v${esc(m.version)}</td><td>${m.stage ? `<span class="tag ${esc(m.stage)}">${esc(m.stage)}</span>` : '-'}</td>` +
+          `<td class="num">${m.validationScore ? m.validationScore.toFixed(2) + '%' : '-'}</td><td class="muted" style="font-size:12px">${esc(m.metrics)}</td>` +
+          `<td>${dt(m.createdAt)}</td><td>${dt(m.promotedAt)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">등록된 모델 없음 (모델 서버 연결 확인)</td></tr>');
+    }
+  });
+  fetch('/api/alerts').then((r) => r.json()).then((alerts) => {
+    const rows = alerts.filter((a) => a.type === 'MODEL_SWAP');
+    document.getElementById('history').innerHTML = '<tr><th>시각</th><th>내용</th></tr>' +
+      (rows.map((a) => `<tr><td>${dt(a.createdAt)}</td><td>${esc(a.message)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">교체 이력 없음</td></tr>');
+  });
+</script>
+</body>
+</html>

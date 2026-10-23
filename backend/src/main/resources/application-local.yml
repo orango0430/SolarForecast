@@ -1,0 +1,6 @@
+# Docker 없이 로컬에서 띄울 때: ./gradlew bootRun --args='--spring.profiles.active=local'
+spring:
+  datasource:
+    url: jdbc:h2:file:./build/localdb/solarcast;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:

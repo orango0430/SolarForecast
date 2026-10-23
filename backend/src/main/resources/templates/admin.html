@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('SolarCast 관리')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('admin')}"></header>
+<main>
+  <div class="grid two">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <h2>리플레이 (학습에 쓰지 않은 마지막 90일을 하루씩 재생)</h2>
+        <div class="row">
+          <label>시작 <input type="date" id="from"></label>
+          <label>끝 <input type="date" id="to"></label>
+          <span class="muted">비우면 실측이 있는 마지막 90일</span>
+        </div>
+        <div class="row">
+          <button class="primary" data-act="start">시작</button>
+          <button data-act="step">하루 진행</button>
+          <button data-act="auto-on">자동 진행</button>
+          <button data-act="auto-off">자동 멈춤</button>
+          <button data-act="stop">중지</button>
+        </div>
+        <div class="muted" id="status"></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <h2>예측 수동 실행</h2>
+        <div class="row"><input type="date" id="runDate"><button data-act="run">태양광·수요 예측 실행</button></div>
+      </div>
+      <div class="card">
+        <h2>모델</h2>
+        <div class="row">
+          <select id="model"><option value="solar">태양광</option><option value="demand">수요</option></select>
+          <button data-act="retrain">재학습 (challenger 등록)</button>
+          <button data-act="compare">champion과 비교</button>
+          <button data-act="promote">규칙 통과 시 승격</button>
+          <button data-act="rollback">롤백</button>
+        </div>
+      </div>
+    </div>
+    <div class="card"><h2>실행 기록</h2><pre class="log" id="log"></pre></div>
+  </div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const out = (title, body) => { $('log').textContent = `[${new Date().toLocaleTimeString()}] ${title}\n${typeof body === 'string' ? body : JSON.stringify(body, null, 2)}\n\n` + $('log').textContent; };
+  async function post(url) {
+    const r = await fetch(url, { method: 'POST', credentials: 'same-origin' });
+    const text = await r.text();
+    let body; try { body = JSON.parse(text); } catch { body = text; }
+    out(`${r.status} POST ${url}`, body);
+    status();
+    return body;
+  }
+  async function status() {
+    const s = await fetch('/api/replay/status').then((r) => r.json());
+    $('status').textContent = s.cursor !== 'null' ? `구간 ${s.start} ~ ${s.end} · 다음 재생일 ${s.cursor} · ${s.running ? (s.auto ? `자동 진행 중 (${s.intervalMs}ms 간격)` : '대기') : '정지'}` : '미시작';
+  }
+  const actions = {
+    start: () => post(`/api/admin/replay/start?auto=false${$('from').value ? '&from=' + $('from').value : ''}${$('to').value ? '&to=' + $('to').value : ''}`),
+    step: () => post('/api/admin/replay/step'),
+    'auto-on': () => post('/api/admin/replay/auto?on=true'),
+    'auto-off': () => post('/api/admin/replay/auto?on=false'),
+    stop: () => post('/api/admin/replay/stop'),
+    run: () => $('runDate').value ? post(`/api/admin/forecasts/run?date=${$('runDate').value}`) : out('날짜를 고르세요', ''),
+    retrain: () => post(`/api/admin/models/${$('model').value}/retrain`),
+    compare: () => post(`/api/admin/models/${$('model').value}/promote?apply=false`),
+    promote: () => confirm('교체 규칙을 통과하면 champion을 바꿉니다. 진행할까요?') && post(`/api/admin/models/${$('model').value}/promote?apply=true`),
+    rollback: () => confirm('이전 champion으로 되돌릴까요?') && post(`/api/admin/models/${$('model').value}/rollback`),
+  };
+  document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => actions[b.dataset.act]()));
+  status(); setInterval(status, 3000);
+</script>
+</body>
+</html>

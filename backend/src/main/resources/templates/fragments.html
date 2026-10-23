@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${title}">SolarCast</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header th:fragment="nav(active)">
+  <h1>☀ SolarCast</h1>
+  <nav>
+    <a href="/" th:classappend="${active == 'dashboard'} ? 'active'">대시보드</a>
+    <a href="/models" th:classappend="${active == 'models'} ? 'active'">모델</a>
+    <a href="/admin" th:classappend="${active == 'admin'} ? 'active'">관리</a>
+    <a href="/swagger-ui/index.html">API 문서</a>
+  </nav>
+</header>
+</body>
+</html>

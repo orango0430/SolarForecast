@@ -1,0 +1,17 @@
+groups:
+  - name: solarcast
+    rules:
+      - alert: PipelineFailure
+        expr: increase(solarcast_alerts_total{type="PIPELINE_FAILURE"}[1h]) > 0
+        labels: { severity: critical }
+        annotations: { summary: "배치 실패 발생" }
+      - alert: ModelApiDown
+        expr: up{job="model-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations: { summary: "모델 서버 응답 없음" }
+      - alert: SlowForecastApi
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri="/api/forecasts"}[5m]))) > 0.2
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "예측 조회 API p95 200ms 초과" }

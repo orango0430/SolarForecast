@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.solarcast.client.ModelApiClient;
+import kr.solarcast.collect.DemandCollector;
 import kr.solarcast.collect.KmaClient;
 import kr.solarcast.collect.LivePipeline;
 import kr.solarcast.domain.ReplayState;
@@ -39,6 +40,7 @@ public class AdminController {
 	private final ModelSyncService modelSync;
 	private final KmaClient kma;
 	private final LivePipeline livePipeline;
+	private final DemandCollector demandCollector;
 
 	@Operation(summary = "예측 수동 실행")
 	@PostMapping("/forecasts/run")
@@ -133,6 +135,15 @@ public class AdminController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime baseTime) {
 		LocalDateTime base = baseTime != null ? baseTime : KmaClient.latestBaseTime(LocalDateTime.now());
 		return Map.of("baseTime", base.toString(), "saved", livePipeline.collect(base));
+	}
+
+	@Operation(summary = "수요 실측 동기화 (전력거래소 수급현황, 기본: 마지막 실측 다음 날 ~ 어제)")
+	@PostMapping("/demand/sync")
+	public Object demandSync(
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+		LocalDate end = to != null ? to : LocalDate.now().minusDays(1);
+		return from != null ? demandCollector.sync(from, end) : demandCollector.syncUntil(end);
 	}
 
 	private static Object check(java.util.function.Supplier<Object> call) {

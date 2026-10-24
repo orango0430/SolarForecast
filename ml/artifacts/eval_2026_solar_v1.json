@@ -1,0 +1,33 @@
+{
+  "target": "solar",
+  "alias": "champion",
+  "version": "1",
+  "period": "2026-01-01 01:00:00 ~ 2026-03-01 00:00:00",
+  "hours": 1344,
+  "model": {
+    "nmae": 10.41,
+    "nmae_all_hours": 3.75,
+    "nmae_low_util": 1.23,
+    "nmae_clear": 11.06,
+    "nmae_partly": 8.19,
+    "nmae_overcast": 5.09
+  },
+  "baseline": {
+    "nmae": 13.84,
+    "nmae_all_hours": 5.2,
+    "nmae_low_util": 1.93,
+    "nmae_clear": 13.66,
+    "nmae_partly": 14.91,
+    "nmae_overcast": 12.39
+  },
+  "monthly": {
+    "2026-01": {
+      "model": 10.82,
+      "baseline": 14.12
+    },
+    "2026-02": {
+      "model": 10.03,
+      "baseline": 13.57
+    }
+  }
+}

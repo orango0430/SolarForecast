@@ -1,0 +1,57 @@
+{
+  "target": "demand",
+  "alias": "champion",
+  "version": "1",
+  "period": "2026-01-01 01:00:00 ~ 2026-10-23 23:00:00",
+  "hours": 7095,
+  "model": {
+    "mape": 3.44,
+    "peak_mape": 2.54
+  },
+  "baseline": {
+    "mape": 6.53,
+    "peak_mape": 6.24
+  },
+  "monthly": {
+    "2026-01": {
+      "model": 3.14,
+      "baseline": 4.59
+    },
+    "2026-02": {
+      "model": 4.98,
+      "baseline": 12.96
+    },
+    "2026-03": {
+      "model": 3.56,
+      "baseline": 5.18
+    },
+    "2026-04": {
+      "model": 3.25,
+      "baseline": 5.08
+    },
+    "2026-05": {
+      "model": 4.36,
+      "baseline": 6.81
+    },
+    "2026-06": {
+      "model": 3.18,
+      "baseline": 5.74
+    },
+    "2026-07": {
+      "model": 2.44,
+      "baseline": 5.52
+    },
+    "2026-08": {
+      "model": 2.81,
+      "baseline": 4.9
+    },
+    "2026-09": {
+      "model": 3.49,
+      "baseline": 8.6
+    },
+    "2026-10": {
+      "model": 3.24,
+      "baseline": 6.47
+    }
+  }
+}

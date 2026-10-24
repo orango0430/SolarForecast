@@ -1,4 +1,4 @@
-"""학습 파이프라인: 베이스라인 -> Ridge -> LightGBM(분위수) 실험을 MLflow에 기록하고 모델을 등록한다.
+﻿"""학습 파이프라인: 베이스라인 -> Ridge -> LightGBM(분위수) 실험을 MLflow에 기록하고 모델을 등록한다.
 
 검증: 시간순 분할. 마지막 REPLAY_DAYS일은 테스트(리플레이) 구간으로 학습에 쓰지 않는다.
 테스트 입력은 운영과 같게 '예보' 기상으로 만든다.
@@ -45,21 +45,21 @@ def same_hour_mean(series: pd.Series, times: pd.Series, days=range(2, 9)) -> np.
     return np.nanmean(np.stack([series.reindex(t - pd.Timedelta(days=k)).to_numpy() for k in days]), axis=0)
 
 
-def cv_score(df, features, transform, metric_fn, n_splits=4):
+def cv_score(df, features, transform, metric_fn, n_splits=4, params=None):
     days = (df["target_time"] - pd.Timedelta(hours=1)).dt.normalize()
     uniq = np.array(sorted(days.unique()))
     scores = []
     for tr_idx, va_idx in TimeSeriesSplit(n_splits=n_splits).split(uniq):
         tr, va = df[days.isin(uniq[tr_idx])], df[days.isin(uniq[va_idx])]
-        m = fit_lgbm(tr[features], make_target(tr, transform, PLANT.capacity_kw), alpha=None)
+        m = fit_lgbm(tr[features], make_target(tr, transform, PLANT.capacity_kw), alpha=None, params=params)
         b = ForecastBundle(df.attrs["target"], features, {q: m for q in QUANTILES}, transform, PLANT.capacity_kw)
         scores.append(metric_fn(va, b.predict(va)["p50"].to_numpy()))
     return float(np.mean(scores))
 
 
-def fit_bundle(target, train, features, transform, extra_meta) -> ForecastBundle:
+def fit_bundle(target, train, features, transform, extra_meta, params=None) -> ForecastBundle:
     y = make_target(train, transform, PLANT.capacity_kw)
-    models = {q: fit_lgbm(train[features], y, alpha=(None if q == "p50" else a)) for q, a in QUANTILES.items()}
+    models = {q: fit_lgbm(train[features], y, alpha=(None if q == "p50" else a), params=params) for q, a in QUANTILES.items()}
     return ForecastBundle(target, features, models, transform, PLANT.capacity_kw if target == "solar" else None, extra_meta)
 
 
@@ -118,25 +118,27 @@ def run_solar():
     results["ridge"] = m
     log_run("ridge", {"model": "ridge", **common}, m)
 
-    # 2. LightGBM 후보: 원값 vs 청천 대비 비율, 관측 학습 vs 예보 학습
+    # 2. LightGBM 후보: 원값 vs 청천 대비 비율, 관측 학습 vs 예보 학습, 반복 수
+    #    (학습 곡선상 태양광은 200~300회 근처에서 검증 오차가 가장 낮았다)
     candidates = {
-        "lgbm_raw_obs": (train, "none"),
-        "lgbm_csi_obs": (train, "csi"),
-        "lgbm_csi_fcst": (fc_train, "csi"),
+        "lgbm_raw_obs": (train, "none", None),
+        "lgbm_csi_obs": (train, "csi", None),
+        "lgbm_csi_obs_300": (train, "csi", {"n_estimators": 300}),
+        "lgbm_csi_fcst": (fc_train, "csi", None),
     }
     best_name, best_cv = None, float("inf")
     fitted = {}
-    for name, (tr, transform) in candidates.items():
+    for name, (tr, transform, params) in candidates.items():
         tr = tr.copy()
         tr.attrs["target"] = "solar"
-        cv = cv_score(tr, SOLAR_FEATURES, transform, nmae)
-        bundle = fit_bundle("solar", tr, SOLAR_FEATURES, transform, {"experiment": name, "cv_nmae": cv})
+        cv = cv_score(tr, SOLAR_FEATURES, transform, nmae, params=params)
+        bundle = fit_bundle("solar", tr, SOLAR_FEATURES, transform, {"experiment": name, "cv_nmae": cv}, params)
         pred = bundle.predict(test)
         m = solar_metrics(test["generation_kwh"], pred["p50"], cap, test["sky"])
         m.update(cv_nmae=cv, coverage_p10_p90=coverage(test["generation_kwh"], pred["p10"], pred["p90"]))
         m["nmae_obs_inputs"] = solar_metrics(test_obs["generation_kwh"], bundle.predict(test_obs)["p50"], cap)["nmae"]
         results[name] = m
-        fitted[name] = (bundle, m, transform, tr)
+        fitted[name] = (bundle, m, transform, tr, params)
         if cv < best_cv:
             best_name, best_cv = name, cv
 
@@ -146,14 +148,15 @@ def run_solar():
     results["upper_bound_with_icsr"] = m
     log_run("upper_bound_with_icsr", {"model": "lgbm", "transform": "csi", "features": "+icsr", **common}, m)
 
-    for name, (bundle, m, transform, tr) in fitted.items():
+    for name, (bundle, m, transform, tr, params) in fitted.items():
         is_best = name == best_name
-        _, version = log_run(name, {"model": "lgbm_quantile", "transform": transform,
+        _, version = log_run(name, {"model": "lgbm_quantile", "transform": transform, **_trees(params),
                                     "features": ",".join(SOLAR_FEATURES), "train_rows": len(tr), **common},
                              m, bundle if is_best else None, MODEL_NAMES["solar"] if is_best else None)
         if is_best:
             alias = assign_alias(MODEL_NAMES["solar"], version)
-            save_local("solar", bundle, version, alias, m)
+            if alias == "champion":  # 로컬 대체 파일은 서빙 중인 모델만
+                save_local("solar", bundle, version, alias, m)
     write_report("solar", results, best_name)
     return results, best_name
 
@@ -178,30 +181,39 @@ def run_demand():
     results["ridge"] = m
     log_run("ridge", {"model": "ridge", **common}, m)
 
+    # 학습 곡선상 수요는 600회에서도 검증 오차가 계속 내려가 반복을 늘린 후보를 둔다
+    long = {"n_estimators": 1500}
+    candidates = {"lgbm_obs": (train, None), "lgbm_obs_1500": (train, long),
+                  "lgbm_fcst": (fc_train, None), "lgbm_fcst_1500": (fc_train, long)}
     best_name, best_cv, fitted = None, float("inf"), {}
-    for name, tr in {"lgbm_obs": train, "lgbm_fcst": fc_train}.items():
+    for name, (tr, params) in candidates.items():
         tr = tr.copy()
         tr.attrs["target"] = "demand"
-        cv = cv_score(tr, DEMAND_FEATURES, "none", mape)
-        bundle = fit_bundle("demand", tr, DEMAND_FEATURES, "none", {"experiment": name, "cv_mape": cv})
+        cv = cv_score(tr, DEMAND_FEATURES, "none", mape, params=params)
+        bundle = fit_bundle("demand", tr, DEMAND_FEATURES, "none", {"experiment": name, "cv_mape": cv}, params)
         pred = bundle.predict(test)
         m = demand_metrics(test["demand_mwh"], pred["p50"], test["target_time"])
         m.update(cv_mape=cv, coverage_p10_p90=coverage(test["demand_mwh"], pred["p10"], pred["p90"]))
         results[name] = m
-        fitted[name] = (bundle, m, tr)
+        fitted[name] = (bundle, m, tr, params)
         if cv < best_cv:
             best_name, best_cv = name, cv
 
-    for name, (bundle, m, tr) in fitted.items():
+    for name, (bundle, m, tr, params) in fitted.items():
         is_best = name == best_name
-        _, version = log_run(name, {"model": "lgbm_quantile", "features": ",".join(DEMAND_FEATURES),
+        _, version = log_run(name, {"model": "lgbm_quantile", **_trees(params), "features": ",".join(DEMAND_FEATURES),
                                     "train_rows": len(tr), **common},
                              m, bundle if is_best else None, MODEL_NAMES["demand"] if is_best else None)
         if is_best:
             alias = assign_alias(MODEL_NAMES["demand"], version)
-            save_local("demand", bundle, version, alias, m)
+            if alias == "champion":
+                save_local("demand", bundle, version, alias, m)
     write_report("demand", results, best_name)
     return results, best_name
+
+
+def _trees(params) -> dict:
+    return {"n_estimators": (params or {}).get("n_estimators", 600)}
 
 
 def _has_champion(model_name) -> bool:

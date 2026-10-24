@@ -1,7 +1,8 @@
-"""실데이터 수집·변환.
+﻿"""실데이터 수집·변환.
 
 - 태양광 실측: 공공데이터포털 15095374 한국남부발전 무릉리 태양광발전실적 (data/raw/murung_solar.csv)
-- 전력수요 실측: 공공데이터포털 15065266 한국전력거래소 시간별 전국 전력수요량 (data/raw/kpx_demand.csv)
+- 전력수요 실측: 공공데이터포털 15065266 한국전력거래소 시간별 전국 전력수요량 (data/raw/kpx_demand.csv, ~2025)
+             + 2026년부터 전력거래소 전력수급현황 5분 현재수요의 시간 평균 (data/raw/kpx_sukub/)
 - 관측 기상: Open-Meteo Historical Weather API (ERA5 재분석) - 기상청 ASOS 키 승인 전 대체
 - 예보 기상: Open-Meteo Previous Runs API, JMA 모델의 하루 전(previous_day1) 예보
              - 기상청 단기예보 과거자료 대체. 발표 시각이 D-1 17시와 정확히 같지는 않다.
@@ -23,7 +24,8 @@ from .config import DEMAND_STATIONS, PLANT, PROCESSED_DIR, RAW_DIR
 from .features import issued_at_for
 from .grid import latlon_to_grid
 
-START, END = "2021-05-01", "2025-12-31"
+# END는 재현성을 위해 고정한다. 데이터를 늘릴 때 올리고 fetch를 다시 돌린다
+START, END = "2021-05-01", "2026-10-23"
 OM_DIR = RAW_DIR / "openmeteo"
 
 OBS_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -45,6 +47,11 @@ def _year_ranges():
         yield max(START, f"{y}-01-01"), min(END, f"{y}-12-31")
 
 
+def _tag(s, e):
+    """캐시 파일 이름. 한 해 전체면 연도, 중간에 끊긴 해면 끝 날짜까지 넣어 END를 올렸을 때 다시 받게 한다."""
+    return s[:4] if e.endswith("12-31") else f"{s[:4]}_to{e}"
+
+
 def _get(url, params, path):
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
@@ -64,17 +71,17 @@ def fetch():
         for s, e in _year_ranges():
             common = dict(latitude=lat, longitude=lon, start_date=s, end_date=e,
                           timezone="Asia/Seoul", wind_speed_unit="ms")
-            _get(OBS_URL, {**common, "hourly": ",".join(OBS_VARS)}, OM_DIR / f"obs_{stn}_{s[:4]}.json")
+            _get(OBS_URL, {**common, "hourly": ",".join(OBS_VARS)}, OM_DIR / f"obs_{stn}_{_tag(s, e)}.json")
             _get(FCST_URL, {**common, "models": FCST_MODEL,
                             "hourly": ",".join(f"{v}_previous_day1" for v in FCST_VARS)},
-                 OM_DIR / f"fcst_{stn}_{s[:4]}.json")
-            print(f"{stn} {s[:4]} ok")
+                 OM_DIR / f"fcst_{stn}_{_tag(s, e)}.json")
+            print(f"{stn} {_tag(s, e)} ok")
 
 
 def _load_hourly(kind, stn) -> pd.DataFrame:
     frames = []
-    for s, _ in _year_ranges():
-        js = json.loads((OM_DIR / f"{kind}_{stn}_{s[:4]}.json").read_text(encoding="utf-8"))
+    for s, e in _year_ranges():
+        js = json.loads((OM_DIR / f"{kind}_{stn}_{_tag(s, e)}.json").read_text(encoding="utf-8"))
         frames.append(pd.DataFrame(js["hourly"]))
     df = pd.concat(frames, ignore_index=True)
     df["time"] = pd.to_datetime(df["time"])
@@ -137,11 +144,58 @@ def build_actuals():
 
     d = pd.read_csv(RAW_DIR / "kpx_demand.csv", encoding="utf-8-sig")
     demand = _wide_to_long(d, "date", [f"h{h}" for h in range(1, 25)], "demand_mwh")
+    # 공공데이터포털 파일 이후 구간은 전력거래소 수급현황 5분 값의 시간 평균으로 잇는다
+    recent = load_sukub_hourly()
+    if len(recent):
+        recent = recent[recent["target_time"] > demand["target_time"].max()]
+        demand = pd.concat([demand, recent], ignore_index=True)
 
     lo, hi = pd.Timestamp(START), pd.Timestamp(END) + pd.Timedelta(hours=24)
     solar = solar[(solar["target_time"] > lo) & (solar["target_time"] <= hi)]
     demand = demand[(demand["target_time"] > lo) & (demand["target_time"] <= hi)]
     return solar, demand
+
+
+SUKUB_URL = "https://openapi.kpx.or.kr/downloadSukubCSV.do"
+SUKUB_DIR = RAW_DIR / "kpx_sukub"
+SUKUB_START = "2026-01-01"  # 공공데이터포털 수요 파일이 2025-12-31까지라 그다음부터
+MIN_SAMPLES = 10  # 한 시간 5분 샘플 12개 중 이 이상일 때만 시간값으로 인정 (Spring KpxSukubClient와 같은 규칙)
+
+
+def fetch_sukub():
+    """전력거래소 전력수급현황 5분 CSV (키 불필요, 최근 1년). 한 달씩 원본을 저장한다."""
+    SUKUB_DIR.mkdir(parents=True, exist_ok=True)
+    session = requests.Session()
+    session.headers["User-Agent"] = "Mozilla/5.0 solarcast"
+    session.get("https://openapi.kpx.or.kr/sukub.do", timeout=30)
+    start = pd.Timestamp(SUKUB_START)
+    end = pd.Timestamp(END) + pd.Timedelta(days=1)  # END일 24시(다음날 00:00) 샘플까지
+    while start <= end:
+        stop = min(start + pd.offsets.MonthEnd(0), end)
+        path = SUKUB_DIR / f"sukub_{start:%Y%m%d}_{stop:%Y%m%d}.csv"
+        if not path.exists():
+            r = session.post(SUKUB_URL, data={"startDate": f"{start:%Y-%m-%d}", "endDate": f"{stop:%Y-%m-%d}"},
+                             timeout=120)
+            r.raise_for_status()
+            path.write_bytes(r.content)
+        print(f"sukub {path.name} ok")
+        start = stop + pd.Timedelta(days=1)
+
+
+def load_sukub_hourly() -> pd.DataFrame:
+    frames = [pd.read_csv(p, encoding="cp949") for p in sorted(SUKUB_DIR.glob("sukub_*.csv"))]
+    if not frames:
+        return pd.DataFrame(columns=["target_time", "demand_mwh"])
+    df = pd.concat(frames, ignore_index=True)
+    t = pd.to_datetime(df.iloc[:, 0].astype(str), format="%Y%m%d%H%M%S")
+    load = pd.to_numeric(df.iloc[:, 2], errors="coerce")
+    s = pd.Series(load.where(load > 0).to_numpy(), index=t).dropna()
+    s = s[~s.index.duplicated()].sort_index()
+    # (h-1, h] 평균 = hour-ending. 학습용 발전단 수요와 평균 차이 0.16% (2025-10~12 비교)
+    g = s.resample("h", closed="right", label="right")
+    hourly = pd.DataFrame({"mean": g.mean(), "n": g.count()})
+    hourly = hourly[hourly["n"] >= MIN_SAMPLES]
+    return pd.DataFrame({"target_time": hourly.index, "demand_mwh": hourly["mean"].round(1).to_numpy()})
 
 
 def build():
@@ -164,6 +218,7 @@ def main():
     a = ap.parse_args()
     if a.step in ("fetch", "all"):
         fetch()
+        fetch_sukub()
     if a.step in ("build", "all"):
         build()
 

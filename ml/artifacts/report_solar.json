@@ -1,62 +1,73 @@
 {
-  "best": "lgbm_csi_obs",
+  "best": "lgbm_csi_obs_300",
   "results": {
     "baseline": {
-      "nmae": 12.075978582748473,
-      "nmae_all_hours": 4.7221253424204335,
-      "nmae_low_util": 1.685291968960359,
-      "nmae_clear": 11.746296828309305,
-      "nmae_partly": 12.755379411764704,
-      "nmae_overcast": 19.491384126984126
+      "nmae": 13.153211011689876,
+      "nmae_all_hours": 4.873021932908822,
+      "nmae_low_util": 1.8351247477136552,
+      "nmae_clear": 12.925667834871144,
+      "nmae_partly": 14.322560436944006,
+      "nmae_overcast": 12.850074489795917
     },
     "ridge": {
-      "nmae": 11.943242899513283,
-      "nmae_all_hours": 4.306122299920312,
-      "nmae_low_util": 1.1523113716852555,
-      "nmae_clear": 12.27104279017968,
-      "nmae_partly": 9.5419419496819,
-      "nmae_overcast": 11.089772020365931
+      "nmae": 12.243833962713184,
+      "nmae_all_hours": 4.152190768800678,
+      "nmae_low_util": 1.1834686963321168,
+      "nmae_clear": 13.150779528273377,
+      "nmae_partly": 7.950041325613634,
+      "nmae_overcast": 11.066446179822586
     },
     "lgbm_raw_obs": {
-      "nmae": 8.672486312620805,
-      "nmae_all_hours": 3.245714199368984,
-      "nmae_low_util": 1.0046846159515104,
-      "nmae_clear": 8.33508603672993,
-      "nmae_partly": 10.766948960574128,
-      "nmae_overcast": 10.975802440381967,
-      "cv_nmae": 8.892886429460086,
-      "coverage_p10_p90": 87.4015748031496,
-      "nmae_obs_inputs": 8.29228583282073
+      "nmae": 9.477417423659778,
+      "nmae_all_hours": 3.3038520425448685,
+      "nmae_low_util": 1.0388485848378086,
+      "nmae_clear": 9.64506220040463,
+      "nmae_partly": 8.456651904124545,
+      "nmae_overcast": 10.735785817893326,
+      "cv_nmae": 8.785791508852636,
+      "coverage_p10_p90": 87.40310077519379,
+      "nmae_obs_inputs": 9.134389732861944
     },
     "lgbm_csi_obs": {
-      "nmae": 8.556521151631735,
-      "nmae_all_hours": 3.2050970331814947,
-      "nmae_low_util": 0.9951830156801201,
-      "nmae_clear": 8.18818473796219,
-      "nmae_partly": 11.006282870173273,
-      "nmae_overcast": 10.45427385102483,
-      "cv_nmae": 8.813471622015921,
-      "coverage_p10_p90": 87.4015748031496,
-      "nmae_obs_inputs": 8.347848968219857
+      "nmae": 9.643822789439467,
+      "nmae_all_hours": 3.3427677143724948,
+      "nmae_low_util": 1.0309898921293807,
+      "nmae_clear": 9.817439665595595,
+      "nmae_partly": 8.712400834436009,
+      "nmae_overcast": 10.129924254526072,
+      "cv_nmae": 8.745696703889621,
+      "coverage_p10_p90": 86.38565891472868,
+      "nmae_obs_inputs": 9.292951680844531
+    },
+    "lgbm_csi_obs_300": {
+      "nmae": 9.605508741874477,
+      "nmae_all_hours": 3.33586815688897,
+      "nmae_low_util": 1.0356159157750815,
+      "nmae_clear": 9.802858943181876,
+      "nmae_partly": 8.585805973651132,
+      "nmae_overcast": 9.904273850538948,
+      "cv_nmae": 8.727201866927764,
+      "coverage_p10_p90": 86.7248062015504,
+      "nmae_obs_inputs": 9.288922289406953
     },
     "lgbm_csi_fcst": {
-      "nmae": 8.665665178168343,
-      "nmae_all_hours": 3.2656307938511007,
-      "nmae_low_util": 1.0356427725787323,
-      "nmae_clear": 8.290559627526651,
-      "nmae_partly": 11.347635541616047,
-      "nmae_overcast": 9.891139644017167,
-      "cv_nmae": 9.693454723905777,
-      "coverage_p10_p90": 88.42056507642427,
-      "nmae_obs_inputs": 9.212856273755254
+      "nmae": 10.081576559434968,
+      "nmae_all_hours": 3.400852997363817,
+      "nmae_low_util": 0.9497795845244668,
+      "nmae_clear": 10.417283713114827,
+      "nmae_partly": 8.333052184687682,
+      "nmae_overcast": 10.680376995131132,
+      "cv_nmae": 9.624878558080834,
+      "coverage_p10_p90": 89.97093023255815,
+      "nmae_obs_inputs": 11.211212918424655
     },
     "upper_bound_with_icsr": {
-      "nmae": 7.006781384173557,
-      "nmae_all_hours": 2.6065088796218907,
-      "nmae_low_util": 0.789380639849573,
-      "nmae_clear": 5.44063911125939,
-      "nmae_partly": 9.073836569034162,
-      "nmae_overcast": 9.195653610602596
+      "nmae": 7.880592309285431,
+      "nmae_all_hours": 2.7842937804522054,
+      "nmae_low_util": 0.914525975833923,
+      "nmae_clear": 6.781117143174784,
+      "nmae_partly": 9.204302948452373,
+      "nmae_overcast": 8.758778002227224
     }
   }
 }

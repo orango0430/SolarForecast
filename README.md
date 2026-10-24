@@ -67,8 +67,13 @@ docker compose up --build
 - 대시보드 http://localhost:8080 · 관리 http://localhost:8080/admin (admin/admin) · Swagger http://localhost:8080/swagger-ui/index.html
 - MLflow http://localhost:5000 · Prometheus http://localhost:9090 · Grafana http://localhost:3000
 
-첫 실행 때 model-api 컨테이너가 `data/raw`로 학습 데이터를 만들고 모델을 학습·등록한 뒤 뜬다 (수 분).
-> ⚠ compose 파일은 작성만 했고 아직 실제로 띄워 검증하지 않았다. 아래 로컬 실행은 검증했다.
+첫 실행 때 model-api 컨테이너가 `data/processed`가 없으면 `data/raw`로 만들고, 컨테이너 MLflow 레지스트리에
+champion이 없으면 모델을 학습·등록한 뒤 뜬다 (약 2분). Spring은 빈 PostgreSQL에 시드를 넣는다 (약 10초).
+
+- 2026-10-24 Docker Desktop 29.6에서 검증: 6개 서비스 모두 정상, 리플레이·조회 API·관리자 인증·Prometheus 수집·경고 규칙·Grafana 데이터소스 확인
+- 5000번 포트가 이미 쓰이고 있으면 `MLFLOW_PORT=5001 docker compose up` 처럼 바꿔 띄운다
+- 컨테이너 레지스트리는 로컬(`ml/mlflow.db`)과 따로라, 처음 뜰 때 그 시점 데이터로 학습한 모델이 v1 champion이 된다
+- model-api(8000)는 외부에 열지 않는다. Spring만 내부망으로 호출
 
 ### 로컬 (Docker 없이)
 ```powershell

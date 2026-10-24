@@ -1,5 +1,11 @@
 ﻿# SolarCast — 태양광 발전량·전력수요 day-ahead 예측 플랫폼
 
+[![ci](https://github.com/orango0430/SolarForecast/actions/workflows/ci.yml/badge.svg)](https://github.com/orango0430/SolarForecast/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-17-007396)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-6DB33F)
+![Python](https://img.shields.io/badge/Python-3.13-3776AB)
+![MLflow](https://img.shields.io/badge/MLflow-3.17-0194E2)
+
 기상 예보로 다음 날 시간별 태양광 발전량(발전소 1곳)과 전국 전력수요를 예측하고,
 Spring Boot 플랫폼에서 예측·실측·오차를 매일 자동으로 관리하는 1인 풀스택 AI 프로젝트.
 

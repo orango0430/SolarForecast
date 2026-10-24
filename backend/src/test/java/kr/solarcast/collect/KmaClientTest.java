@@ -14,4 +14,18 @@ class KmaClientTest {
 		assertThat(KmaClient.precip("30.0~50.0mm")).isEqualTo(30.0);
 		assertThat(KmaClient.precip("50.0mm 이상")).isEqualTo(50.0);
 	}
+
+	@Test
+	void encodesDecodingKeyOnly() {
+		assertThat(KmaClient.encodeKey("ab+c/d==")).isEqualTo("ab%2Bc%2Fd%3D%3D");
+		assertThat(KmaClient.encodeKey("ab%2Bc%2Fd%3D%3D")).isEqualTo("ab%2Bc%2Fd%3D%3D");
+	}
+
+	@Test
+	void latestBaseTimeFollowsReleaseSchedule() {
+		var d = java.time.LocalDate.of(2026, 10, 24);
+		assertThat(KmaClient.latestBaseTime(d.atTime(17, 20))).isEqualTo(d.atTime(17, 0));
+		assertThat(KmaClient.latestBaseTime(d.atTime(17, 10))).isEqualTo(d.atTime(14, 0));
+		assertThat(KmaClient.latestBaseTime(d.atTime(1, 0))).isEqualTo(d.minusDays(1).atTime(23, 0));
+	}
 }

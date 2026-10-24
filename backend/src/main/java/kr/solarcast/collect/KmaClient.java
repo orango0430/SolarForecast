@@ -1,6 +1,8 @@
 package kr.solarcast.collect;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +23,7 @@ import kr.solarcast.domain.WeatherObservation;
 
 /**
  * 기상청 공공데이터포털 API (단기예보 getVilageFcst, ASOS 시간자료 getWthrDataList).
- * 서비스 키가 있어야 동작한다. 응답 형식은 활용가이드 기준으로 작성했고 실제 키로는 아직 검증하지 않았다.
+ * 서비스 키가 있어야 동작한다. 키 확인은 POST /api/admin/kma/check.
  */
 @Component
 public class KmaClient {
@@ -37,7 +39,24 @@ public class KmaClient {
 
 	public KmaClient(RestClient.Builder builder, AppProperties props) {
 		this.rest = builder.build();
-		this.serviceKey = props.kma().serviceKey();
+		this.serviceKey = encodeKey(props.kma().serviceKey());
+	}
+
+	/** 공공데이터포털은 Encoding/Decoding 키를 둘 다 준다. URI를 인코딩된 상태로 만들므로 Decoding 키는 인코딩한다. */
+	static String encodeKey(String key) {
+		if (!StringUtils.hasText(key)) {
+			return key;
+		}
+		key = key.trim();
+		return key.contains("%") ? key : URLEncoder.encode(key, StandardCharsets.UTF_8);
+	}
+
+	/** 단기예보 발표 시각(02, 05, ..., 23시) 중 지금 조회 가능한 가장 최근 것 (발표 후 약 10분 뒤 제공) */
+	public static LocalDateTime latestBaseTime(LocalDateTime now) {
+		LocalDateTime t = now.minusMinutes(15);
+		int hour = t.getHour();
+		int base = hour < 2 ? -1 : ((hour - 2) / 3) * 3 + 2;
+		return base < 0 ? t.toLocalDate().minusDays(1).atTime(23, 0) : t.toLocalDate().atTime(base, 0);
 	}
 
 	public boolean enabled() {

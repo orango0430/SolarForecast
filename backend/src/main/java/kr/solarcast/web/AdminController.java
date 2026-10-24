@@ -1,6 +1,7 @@
 package kr.solarcast.web;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.solarcast.client.ModelApiClient;
+import kr.solarcast.collect.KmaClient;
+import kr.solarcast.collect.LivePipeline;
 import kr.solarcast.domain.ReplayState;
 import kr.solarcast.domain.RunMode;
 import kr.solarcast.domain.TargetType;
@@ -34,6 +37,8 @@ public class AdminController {
 	private final ReplayService replayService;
 	private final ModelApiClient modelApi;
 	private final ModelSyncService modelSync;
+	private final KmaClient kma;
+	private final LivePipeline livePipeline;
 
 	@Operation(summary = "예측 수동 실행")
 	@PostMapping("/forecasts/run")
@@ -93,6 +98,48 @@ public class AdminController {
 	@PostMapping("/models/{target}/retrain")
 	public Map<String, Object> retrain(@PathVariable String target) {
 		return modelApi.retrain(TargetType.from(target).key());
+	}
+
+	@Operation(summary = "기상청 API 키 확인 (저장하지 않고 조회만)")
+	@PostMapping("/kma/check")
+	public Map<String, Object> kmaCheck() {
+		Map<String, Object> out = new LinkedHashMap<>();
+		if (!kma.enabled()) {
+			out.put("enabled", false);
+			out.put("hint", "프로젝트 루트 .env에 KMA_SERVICE_KEY를 넣고 서버를 다시 시작하세요");
+			return out;
+		}
+		out.put("enabled", true);
+		var plant = forecastService.plant();
+		LocalDateTime base = KmaClient.latestBaseTime(LocalDateTime.now());
+		out.put("vilage", check(() -> {
+			var rows = kma.vilageForecast(plant.getNx(), plant.getNy(), base);
+			return Map.of("baseTime", base.toString(), "grid", plant.getNx() + "," + plant.getNy(), "hours", rows.size(),
+					"first", rows.isEmpty() ? "-" : rows.get(0));
+		}));
+		LocalDate yesterday = LocalDate.now().minusDays(1);
+		out.put("asos", check(() -> {
+			var rows = kma.asosHourly(plant.getAsosStnId(), yesterday);
+			return Map.of("date", yesterday.toString(), "stnId", plant.getAsosStnId(), "hours", rows.size(),
+					"first", rows.isEmpty() ? "-" : rows.get(0));
+		}));
+		return out;
+	}
+
+	@Operation(summary = "단기예보 수집 실행 (기본: 지금 조회 가능한 최신 발표분)")
+	@PostMapping("/kma/collect")
+	public Map<String, Object> kmaCollect(
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime baseTime) {
+		LocalDateTime base = baseTime != null ? baseTime : KmaClient.latestBaseTime(LocalDateTime.now());
+		return Map.of("baseTime", base.toString(), "saved", livePipeline.collect(base));
+	}
+
+	private static Object check(java.util.function.Supplier<Object> call) {
+		try {
+			return call.get();
+		} catch (RuntimeException e) {
+			return Map.of("error", String.valueOf(e.getMessage()));
+		}
 	}
 
 	@Operation(summary = "모델 레지스트리 동기화")

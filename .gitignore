@@ -16,3 +16,4 @@ backend/.gradle/
 .idea/
 *.iml
 .env
+!.env.example

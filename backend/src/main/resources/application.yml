@@ -1,6 +1,9 @@
 spring:
   application:
     name: solarcast
+  config:
+    # 로컬 실행 시 프로젝트 루트의 .env(KMA_SERVICE_KEY 등)를 읽는다. Docker에서는 compose가 넘겨준다
+    import: optional:file:../.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/solarcast?reWriteBatchedInserts=true}
     username: ${DB_USER:solarcast}

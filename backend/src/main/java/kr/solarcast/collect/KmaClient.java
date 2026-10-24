@@ -15,6 +15,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import kr.solarcast.config.AppProperties;
@@ -22,24 +23,66 @@ import kr.solarcast.domain.WeatherForecast;
 import kr.solarcast.domain.WeatherObservation;
 
 /**
- * 기상청 공공데이터포털 API (단기예보 getVilageFcst, ASOS 시간자료 getWthrDataList).
- * 서비스 키가 있어야 동작한다. 키 확인은 POST /api/admin/kma/check.
+ * 기상청 단기예보 getVilageFcst, ASOS 시간자료 getWthrDataList.
+ * 같은 서비스를 두 곳에서 제공한다. 키 형태로 어느 쪽인지 고른다.
+ *  - 기상청 API허브 (apihub.kma.go.kr/api/typ02/openApi, authKey 22자 내외)
+ *  - 공공데이터포털 (apis.data.go.kr/1360000, serviceKey 수십~백여 자)
+ * 키 확인은 POST /api/admin/kma/check.
  */
 @Component
 public class KmaClient {
 
-	private static final String VILAGE = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
-	private static final String ASOS = "https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList";
+	enum Provider {
+		APIHUB("https://apihub.kma.go.kr/api/typ02/openApi", "authKey"),
+		DATA_GO_KR("https://apis.data.go.kr/1360000", "serviceKey");
+
+		final String base;
+		final String keyParam;
+
+		Provider(String base, String keyParam) {
+			this.base = base;
+			this.keyParam = keyParam;
+		}
+	}
+
+	private static final String VILAGE = "/VilageFcstInfoService_2.0/getVilageFcst";
+	private static final String ASOS = "/AsosHourlyInfoService/getWthrDataList";
 	private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
 	private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("HHmm");
 	private static final DateTimeFormatter TM = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
 	private final RestClient rest;
 	private final String serviceKey;
+	private final Provider provider;
 
 	public KmaClient(RestClient.Builder builder, AppProperties props) {
 		this.rest = builder.build();
-		this.serviceKey = encodeKey(props.kma().serviceKey());
+		String raw = extractKey(props.kma().serviceKey());
+		this.provider = providerOf(raw);
+		this.serviceKey = encodeKey(raw);
+	}
+
+	public String provider() {
+		return provider.name();
+	}
+
+	/** API허브 URL을 통째로 붙여넣은 경우 authKey 값만 꺼낸다 */
+	static String extractKey(String value) {
+		if (!StringUtils.hasText(value)) {
+			return value;
+		}
+		value = value.trim();
+		int i = value.indexOf("authKey=");
+		if (i >= 0) {
+			String rest = value.substring(i + "authKey=".length());
+			int end = rest.indexOf('&');
+			return end >= 0 ? rest.substring(0, end) : rest;
+		}
+		return value;
+	}
+
+	static Provider providerOf(String key) {
+		return key != null && key.length() <= 32 && key.matches("[A-Za-z0-9_-]+") ? Provider.APIHUB : Provider.DATA_GO_KR;
 	}
 
 	/** 공공데이터포털은 Encoding/Decoding 키를 둘 다 준다. URI를 인코딩된 상태로 만들므로 Decoding 키는 인코딩한다. */
@@ -65,8 +108,8 @@ public class KmaClient {
 
 	/** baseTime 발표 단기예보를 시각별 행으로 묶는다. 0000 예보는 hour-ending 기준 전날 24시. */
 	public List<WeatherForecast> vilageForecast(int nx, int ny, LocalDateTime baseTime) {
-		URI uri = UriComponentsBuilder.fromUriString(VILAGE)
-				.queryParam("serviceKey", serviceKey)
+		URI uri = UriComponentsBuilder.fromUriString(provider.base + VILAGE)
+				.queryParam(provider.keyParam, serviceKey)
 				.queryParam("pageNo", 1).queryParam("numOfRows", 1000).queryParam("dataType", "JSON")
 				.queryParam("base_date", baseTime.format(YMD)).queryParam("base_time", baseTime.format(HM))
 				.queryParam("nx", nx).queryParam("ny", ny)
@@ -91,8 +134,8 @@ public class KmaClient {
 
 	/** 전일 1~23시 ASOS 관측 (API는 D-1까지만 제공) */
 	public List<WeatherObservation> asosHourly(int stnId, LocalDate date) {
-		URI uri = UriComponentsBuilder.fromUriString(ASOS)
-				.queryParam("serviceKey", serviceKey)
+		URI uri = UriComponentsBuilder.fromUriString(provider.base + ASOS)
+				.queryParam(provider.keyParam, serviceKey)
 				.queryParam("pageNo", 1).queryParam("numOfRows", 24).queryParam("dataType", "JSON")
 				.queryParam("dataCd", "ASOS").queryParam("dateCd", "HR")
 				.queryParam("startDt", date.format(YMD)).queryParam("startHh", "01")
@@ -109,8 +152,17 @@ public class KmaClient {
 
 	@SuppressWarnings("unchecked")
 	private List<Map<String, Object>> items(URI uri) {
-		Map<String, Object> body = rest.get().uri(uri).retrieve().body(new ParameterizedTypeReference<>() {
-		});
+		Map<String, Object> body;
+		try {
+			body = rest.get().uri(uri).retrieve().body(new ParameterizedTypeReference<>() {
+			});
+		} catch (RestClientResponseException e) {
+			// API허브는 키·활용신청 오류를 {"result":{"status":403,"message":"..."}}로 돌려준다
+			String text = e.getResponseBodyAsString();
+			int i = text.indexOf("\"message\"");
+			String msg = i >= 0 ? text.substring(i).replaceAll("[\\r\\n{}]", "").trim() : text;
+			throw new IllegalStateException("KMA " + e.getStatusCode().value() + " " + msg);
+		}
 		Map<String, Object> response = (Map<String, Object>) body.get("response");
 		Map<String, Object> header = (Map<String, Object>) response.get("header");
 		if (!"00".equals(header.get("resultCode"))) {

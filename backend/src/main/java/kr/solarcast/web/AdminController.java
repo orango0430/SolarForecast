@@ -110,6 +110,7 @@ public class AdminController {
 			return out;
 		}
 		out.put("enabled", true);
+		out.put("provider", kma.provider());
 		var plant = forecastService.plant();
 		LocalDateTime base = KmaClient.latestBaseTime(LocalDateTime.now());
 		out.put("vilage", check(() -> {

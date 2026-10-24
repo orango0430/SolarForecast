@@ -22,6 +22,14 @@ class KmaClientTest {
 	}
 
 	@Test
+	void detectsProviderFromKeyShape() {
+		assertThat(KmaClient.extractKey("https://apihub.kma.go.kr/api/typ01/url/x.php?tmfc=0&authKey=abcDEF_12-xyz"))
+				.isEqualTo("abcDEF_12-xyz");
+		assertThat(KmaClient.providerOf("AbCdEfGhIj-KlMnOp_QrSt")).isEqualTo(KmaClient.Provider.APIHUB);
+		assertThat(KmaClient.providerOf("a".repeat(60) + "+/==")).isEqualTo(KmaClient.Provider.DATA_GO_KR);
+	}
+
+	@Test
 	void latestBaseTimeFollowsReleaseSchedule() {
 		var d = java.time.LocalDate.of(2026, 10, 24);
 		assertThat(KmaClient.latestBaseTime(d.atTime(17, 20))).isEqualTo(d.atTime(17, 0));
